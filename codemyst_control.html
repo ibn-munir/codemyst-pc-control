@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Codemyst PC Control</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root[data-theme="dark"] {
+      --bg:#0f1117;
+      --nav:rgba(15,17,23,0.97);
+      --card:rgba(255,255,255,0.05);
+      --card-h:rgba(255,255,255,0.09);
+      --border:rgba(255,255,255,0.08);
+      --border-h:rgba(255,255,255,0.18);
+      --accent:#0078d4;
+      --accent-l:#60cdff;
+      --accent-g:rgba(0,120,212,0.4);
+      --text:rgba(255,255,255,0.95);
+      --text2:rgba(255,255,255,0.5);
+      --text3:rgba(255,255,255,0.25);
+      --danger:#ff6b6b;
+      --danger-bg:rgba(255,67,67,0.1);
+      --danger-b:rgba(255,67,67,0.25);
+      --online:#13a10e;
+      --key:rgba(255,255,255,0.09);
+      --key-sp:rgba(0,120,212,0.15);
+      --key-sp-b:rgba(0,120,212,0.3);
+      --inp:rgba(255,255,255,0.06);
+      --shadow:0 20px 60px rgba(0,0,0,0.6);
+    }
+    :root[data-theme="light"] {
+      --bg:#f0f0f0;
+      --nav:rgba(245,245,245,0.97);
+      --card:rgba(255,255,255,0.8);
+      --card-h:rgba(255,255,255,0.95);
+      --border:rgba(0,0,0,0.08);
+      --border-h:rgba(0,0,0,0.16);
+      --accent:#0078d4;
+      --accent-l:#0067b8;
+      --accent-g:rgba(0,120,212,0.2);
+      --text:rgba(0,0,0,0.9);
+      --text2:rgba(0,0,0,0.5);
+      --text3:rgba(0,0,0,0.3);
+      --danger:#c42b1c;
+      --danger-bg:rgba(196,43,28,0.07);
+      --danger-b:rgba(196,43,28,0.2);
+      --online:#107c10;
+      --key:rgba(0,0,0,0.06);
+      --key-sp:rgba(0,120,212,0.08);
+      --key-sp-b:rgba(0,120,212,0.2);
+      --inp:rgba(0,0,0,0.04);
+      --shadow:0 20px 60px rgba(0,0,0,0.1);
+    }
+
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+    body{
+      font-family:'Outfit','Segoe UI',sans-serif;
+      background:var(--bg);color:var(--text);
+      min-height:100vh;max-width:430px;margin:0 auto;
+      transition:background 0.3s,color 0.3s;
+      overflow-x:hidden;
+    }
+
+    /* Header */
+    .header{
+      position:sticky;top:0;z-index:100;
+      background:var(--nav);backdrop-filter:blur(20px);
+      border-bottom:1px solid var(--border);
+      padding:0 16px;height:56px;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .hl{display:flex;align-items:center;gap:10px;}
+    .logo-ico{
+      width:34px;height:34px;
+      background:linear-gradient(135deg,#0078d4,#60cdff);
+      border-radius:9px;font-size:17px;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 4px 14px rgba(0,120,212,0.45);
+    }
+    .logo-t{font-size:16px;font-weight:700;}
+    .logo-s{font-size:10px;color:var(--text2);letter-spacing:0.06em;font-weight:500;margin-top:-2px;}
+    .hr{display:flex;align-items:center;gap:8px;}
+
+    .ws-chip{
+      display:flex;align-items:center;gap:5px;
+      background:var(--card);border:1px solid var(--border);
+      border-radius:20px;padding:4px 10px;
+      font-size:11px;color:var(--text2);font-weight:500;
+      transition:all 0.3s;
+    }
+    .ws-chip.connected{border-color:rgba(19,160,14,0.4);color:var(--online);}
+    .ws-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);transition:all 0.3s;}
+    .ws-chip.connected .ws-dot{background:var(--online);box-shadow:0 0 5px var(--online);animation:pulse 2s infinite;}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+    .theme-btn{
+      width:34px;height:34px;border:none;
+      background:var(--card);border:1px solid var(--border);
+      border-radius:9px;cursor:pointer;font-size:15px;
+      display:flex;align-items:center;justify-content:center;
+      transition:all 0.2s;
+    }
+    .theme-btn:hover{background:var(--card-h);}
+
+    /* Tab bar */
+    .tabbar{
+      display:flex;background:var(--nav);
+      border-bottom:1px solid var(--border);
+      padding:0 6px;gap:2px;
+      overflow-x:auto;scrollbar-width:none;
+    }
+    .tabbar::-webkit-scrollbar{display:none;}
+    .tab{
+      flex:0 0 auto;padding:10px 14px;
+      font-size:12px;font-weight:600;color:var(--text2);
+      border:none;background:transparent;cursor:pointer;
+      border-bottom:2px solid transparent;
+      transition:all 0.2s;white-space:nowrap;
+      display:flex;align-items:center;gap:5px;
+    }
+    .tab.active{color:var(--accent-l);border-bottom-color:var(--accent);}
+    .tab:hover{color:var(--text);}
+
+    /* Pages */
+    .page{display:none;padding:12px;}
+    .page.active{display:block;}
+
+    /* Card */
+    .card{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:14px;padding:14px;margin-bottom:10px;
+    }
+    .card-title{
+      font-size:11px;font-weight:600;color:var(--text3);
+      text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;
+    }
+
+    /* Control buttons */
+    .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+    .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+
+    .cb{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:12px;padding:14px 6px 12px;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;gap:6px;
+      color:var(--text);font-family:'Outfit',sans-serif;
+      font-size:12px;font-weight:500;
+      position:relative;overflow:hidden;
+      transition:all 0.15s cubic-bezier(0.2,0,0,1);
+    }
+    .cb .ico{font-size:22px;line-height:1;transition:transform 0.2s;}
+    .cb:hover{background:var(--card-h);border-color:var(--border-h);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.2);}
+    .cb:active{transform:scale(0.94) !important;}
+    .cb:hover .ico{transform:scale(1.1);}
+    .cb.ac{background:rgba(0,120,212,0.12);border-color:rgba(0,120,212,0.3);}
+    .cb.ac:hover{background:rgba(0,120,212,0.2);box-shadow:0 6px 20px var(--accent-g);}
+    .cb.ac .lbl{color:var(--accent-l);}
+    .cb.dn{background:var(--danger-bg);border-color:var(--danger-b);}
+    .cb.dn:hover{background:rgba(255,67,67,0.18);box-shadow:0 6px 20px rgba(255,67,67,0.3);}
+    .cb.dn .lbl{color:var(--danger);}
+
+    .rpl{position:absolute;border-radius:50%;background:rgba(255,255,255,0.12);transform:scale(0);animation:rplA 0.5s linear;pointer-events:none;}
+    @keyframes rplA{to{transform:scale(4);opacity:0;}}
+
+    /* ═══ KEYBOARD ═══ */
+    .kb-card{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:14px;padding:12px 10px;margin-bottom:10px;
+    }
+
+    /* Modifier row */
+    .mod-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
+
+    .mod-key{
+      flex:1;min-width:56px;height:36px;
+      background:var(--key-sp);
+      border:1px solid var(--key-sp-b);
+      border-radius:8px;
+      color:var(--accent-l);
+      font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;
+      cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:4px;
+      transition:all 0.15s;user-select:none;
+    }
+    .mod-key:active{transform:scale(0.93);}
+    .mod-key.on{
+      background:rgba(0,120,212,0.45);
+      border-color:rgba(0,120,212,0.8);
+      color:#fff;
+      box-shadow:0 0 12px rgba(0,120,212,0.6);
+    }
+
+    /* Special keys row */
+    .sp-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
+    .sp-key{
+      flex:1;min-width:52px;height:34px;
+      background:var(--key);border:1px solid var(--border);
+      border-radius:7px;color:var(--text);
+      font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;
+      cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      transition:all 0.1s;user-select:none;
+    }
+    .sp-key:active{background:rgba(0,120,212,0.3);transform:scale(0.92);}
+
+    /* F keys */
+    .frow{display:flex;gap:3px;margin-bottom:8px;}
+    .fk{
+      flex:1;height:30px;
+      background:var(--key-sp);border:1px solid var(--key-sp-b);
+      border-radius:6px;color:var(--accent-l);
+      font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      transition:all 0.1s;
+    }
+    .fk:active{background:rgba(0,120,212,0.35);transform:scale(0.9);}
+
+    /* QWERTY toggle */
+    .kb-toggle{
+      width:100%;height:36px;
+      background:var(--card);border:1px solid var(--border);
+      border-radius:9px;color:var(--text2);
+      font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
+      transition:all 0.2s;margin-bottom:8px;
+    }
+    .kb-toggle:hover{background:var(--card-h);color:var(--text);}
+    .kb-toggle.open{border-color:var(--key-sp-b);color:var(--accent-l);}
+
+    /* QWERTY */
+    .qwerty{display:none;flex-direction:column;gap:5px;animation:kbIn 0.2s;}
+    .qwerty.show{display:flex;}
+    @keyframes kbIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+    .kb-row{display:flex;gap:4px;justify-content:center;}
+
+    .qk{
+      flex:1;max-width:38px;height:42px;
+      background:var(--key);border:1px solid var(--border);
+      border-radius:8px;color:var(--text);
+      font-family:'Outfit',sans-serif;font-size:14px;font-weight:500;
+      cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      transition:background 0.1s,transform 0.08s;
+      user-select:none;position:relative;overflow:hidden;
+    }
+    .qk:hover{background:var(--card-h);}
+    .qk:active{background:rgba(0,120,212,0.3);transform:scale(0.88);}
+    .qk.wide{flex:1.6;max-width:58px;font-size:11px;font-weight:700;}
+    .qk.space{flex:4;max-width:none;font-size:12px;color:var(--text2);}
+    .qk.sym{font-size:12px;}
+
+    /* Arrows */
+    .arrow-pad{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:6px;}
+    .arrow-row{display:flex;gap:4px;}
+    .ark{
+      width:46px;height:42px;
+      background:var(--key);border:1px solid var(--border);
+      border-radius:8px;color:var(--text);font-size:18px;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      transition:all 0.1s;
+    }
+    .ark:active{background:rgba(0,120,212,0.3);transform:scale(0.9);}
+
+    /* Clipboard */
+    .txt-area{
+      width:100%;background:var(--inp);
+      border:1px solid var(--border);border-radius:10px;
+      color:var(--text);font-family:'Outfit',sans-serif;
+      font-size:14px;padding:12px 14px;
+      resize:none;outline:none;
+      transition:border-color 0.2s,box-shadow 0.2s;min-height:100px;
+    }
+    .txt-area:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,120,212,0.2);}
+    .txt-area::placeholder{color:var(--text3);}
+    .char-count{font-size:10px;color:var(--text3);text-align:right;padding:4px 2px 0;}
+    .send-row{display:flex;gap:8px;margin-top:10px;}
+    .send-btn{
+      flex:1;background:rgba(0,120,212,0.15);
+      border:1px solid rgba(0,120,212,0.3);border-radius:10px;
+      color:var(--accent-l);font-family:'Outfit',sans-serif;
+      font-size:13px;font-weight:600;padding:11px;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s;
+    }
+    .send-btn:hover{background:rgba(0,120,212,0.25);box-shadow:0 4px 14px var(--accent-g);}
+    .send-btn:active{transform:scale(0.97);}
+    .clr-btn{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:10px;color:var(--text2);
+      font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;
+      padding:11px 14px;cursor:pointer;transition:all 0.15s;
+    }
+    .clr-btn:hover{background:var(--card-h);color:var(--text);}
+
+    /* Toast */
+    #toast{
+      position:fixed;bottom:18px;right:12px;
+      background:rgba(20,25,45,0.97);
+      backdrop-filter:blur(20px);
+      border:1px solid var(--border);border-radius:12px;
+      padding:11px 15px 13px;
+      display:flex;align-items:flex-start;gap:10px;
+      box-shadow:0 8px 30px rgba(0,0,0,0.5);
+      transform:translateX(130%);
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      z-index:999;min-width:170px;max-width:250px;
+    }
+    :root[data-theme="light"] #toast{background:rgba(255,255,255,0.97);}
+    #toast.show{transform:translateX(0);}
+    .ti{font-size:17px;margin-top:1px;}
+    .tt{font-size:13px;font-weight:600;color:var(--text);}
+    .ts{font-size:11px;color:var(--text2);margin-top:2px;}
+    .tbar{position:absolute;bottom:0;left:0;height:3px;background:var(--accent);border-radius:0 0 0 12px;width:100%;transform-origin:left;}
+    .tbar.go{animation:shrink 2.8s linear forwards;}
+    @keyframes shrink{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+
+    .pad{height:20px;}
+  </style>
+</head>
+<body>
+
+<div id="toast">
+  <div class="ti" id="ti">✓</div>
+  <div><div class="tt" id="tt">Done</div><div class="ts" id="ts"></div></div>
+  <div class="tbar" id="tbar"></div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="hl">
+    <div class="logo-ico">🖥</div>
+    <div><div class="logo-t">Codemyst</div><div class="logo-s">PC CONTROL</div></div>
+  </div>
+  <div class="hr">
+    <div class="ws-chip" id="ws-chip"><div class="ws-dot" id="ws-dot"></div><span id="ws-label">Connecting...</span></div>
+    <button class="theme-btn" onclick="toggleTheme()" id="tbtn">☀️</button>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabbar">
+  <button class="tab active" onclick="goTab('system',this)">⚡ System</button>
+  <button class="tab" onclick="goTab('media',this)">🎵 Media</button>
+  <button class="tab" onclick="goTab('keyboard',this)">⌨️ Keyboard</button>
+  <button class="tab" onclick="goTab('clipboard',this)">📋 Clipboard</button>
+</div>
+
+<!-- ═══ System ═══ -->
+<div class="page active" id="page-system">
+  <div class="card" style="margin-top:4px;">
+    <div class="card-title">Power</div>
+    <div class="g3">
+      <button class="cb ac" onclick="cmd(event,'L','🔒','PC Locked','')"><span class="ico">🔒</span><span class="lbl">Lock</span></button>
+      <button class="cb" onclick="cmd(event,'SL','💤','Sleep','')"><span class="ico">💤</span><span class="lbl">Sleep</span></button>
+      <button class="cb dn" onclick="confirmSD()"><span class="ico">⏻</span><span class="lbl">Shutdown</span></button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Volume</div>
+    <div class="g3">
+      <button class="cb" onclick="cmd(event,'VD','🔉','Vol Down','')"><span class="ico">🔉</span><span class="lbl">Vol −</span></button>
+      <button class="cb" onclick="cmd(event,'M','🔇','Muted','')"><span class="ico">🔇</span><span class="lbl">Mute</span></button>
+      <button class="cb" onclick="cmd(event,'VU','🔊','Vol Up','')"><span class="ico">🔊</span><span class="lbl">Vol +</span></button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Tools</div>
+    <div class="g2">
+      <button class="cb" onclick="cmd(event,'SS','📸','Screenshot','')"><span class="ico">📸</span><span class="lbl">Screenshot</span></button>
+      <button class="cb" onclick="cmd(event,'TASKMAN','📊','Task Manager','')"><span class="ico">📊</span><span class="lbl">Task Manager</span></button>
+    </div>
+  </div>
+  <div class="pad"></div>
+</div>
+
+<!-- ═══ Media ═══ -->
+<div class="page" id="page-media">
+  <div class="card" style="margin-top:4px;">
+    <div class="card-title">Playback</div>
+    <div class="g3">
+      <button class="cb" onclick="cmd(event,'PREV','⏮','Previous','')"><span class="ico">⏮</span><span class="lbl">Prev</span></button>
+      <button class="cb ac" onclick="cmd(event,'PP','⏯','Play/Pause','')"><span class="ico">⏯</span><span class="lbl">Play</span></button>
+      <button class="cb" onclick="cmd(event,'NEXT','⏭','Next','')"><span class="ico">⏭</span><span class="lbl">Next</span></button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Volume</div>
+    <div class="g3">
+      <button class="cb" onclick="cmd(event,'VD','🔉','Vol Down','')"><span class="ico">🔉</span><span class="lbl">Vol −</span></button>
+      <button class="cb" onclick="cmd(event,'M','🔇','Muted','')"><span class="ico">🔇</span><span class="lbl">Mute</span></button>
+      <button class="cb" onclick="cmd(event,'VU','🔊','Vol Up','')"><span class="ico">🔊</span><span class="lbl">Vol +</span></button>
+    </div>
+  </div>
+  <div class="pad"></div>
+</div>
+
+<!-- ═══ Keyboard ═══ -->
+<div class="page" id="page-keyboard">
+  <div class="kb-card" style="margin-top:4px;">
+
+    <!-- Modifier keys -->
+    <div class="card-title">Modifier Keys</div>
+    <div class="mod-row">
+      <button class="mod-key" id="mod-ctrl" onpointerdown="toggleMod('ctrl')">Ctrl</button>
+      <button class="mod-key" id="mod-shift" onpointerdown="toggleMod('shift')">Shift</button>
+      <button class="mod-key" id="mod-alt" onpointerdown="toggleMod('alt')">Alt</button>
+      <button class="mod-key" id="mod-win" onpointerdown="toggleMod('win')">⊞ Win</button>
+    </div>
+
+    <!-- Special keys -->
+    <div class="card-title" style="margin-top:4px;">Special Keys</div>
+    <div class="sp-row">
+      <button class="sp-key" onpointerdown="pressKey('esc')">Esc</button>
+      <button class="sp-key" onpointerdown="pressKey('tab')">Tab</button>
+      <button class="sp-key" onpointerdown="pressKey('capslock')">Caps</button>
+      <button class="sp-key" onpointerdown="pressKey('enter')">Enter</button>
+      <button class="sp-key" onpointerdown="pressKey('backspace')">⌫</button>
+      <button class="sp-key" onpointerdown="pressKey('delete')">Del</button>
+    </div>
+    <div class="sp-row">
+      <button class="sp-key" onpointerdown="pressKey('home')">Home</button>
+      <button class="sp-key" onpointerdown="pressKey('end')">End</button>
+      <button class="sp-key" onpointerdown="pressKey('pageup')">PgUp</button>
+      <button class="sp-key" onpointerdown="pressKey('pagedown')">PgDn</button>
+      <button class="sp-key" onpointerdown="pressKey('insert')">Ins</button>
+      <button class="sp-key" onpointerdown="pressKey('printscreen')">PrtSc</button>
+    </div>
+
+    <!-- F Keys -->
+    <div class="card-title" style="margin-top:4px;">Function Keys</div>
+    <div class="frow">
+      <button class="fk" onpointerdown="pressKey('f1')">F1</button>
+      <button class="fk" onpointerdown="pressKey('f2')">F2</button>
+      <button class="fk" onpointerdown="pressKey('f3')">F3</button>
+      <button class="fk" onpointerdown="pressKey('f4')">F4</button>
+      <button class="fk" onpointerdown="pressKey('f5')">F5</button>
+      <button class="fk" onpointerdown="pressKey('f6')">F6</button>
+    </div>
+    <div class="frow">
+      <button class="fk" onpointerdown="pressKey('f7')">F7</button>
+      <button class="fk" onpointerdown="pressKey('f8')">F8</button>
+      <button class="fk" onpointerdown="pressKey('f9')">F9</button>
+      <button class="fk" onpointerdown="pressKey('f10')">F10</button>
+      <button class="fk" onpointerdown="pressKey('f11')">F11</button>
+      <button class="fk" onpointerdown="pressKey('f12')">F12</button>
+    </div>
+
+    <!-- QWERTY Toggle -->
+    <button class="kb-toggle" id="kb-toggle" onclick="toggleQwerty()">⌨️ Show QWERTY Keyboard</button>
+
+    <!-- QWERTY -->
+    <div class="qwerty" id="qwerty">
+
+      <!-- Numbers -->
+      <div class="kb-row">
+        <button class="qk sym" onpointerdown="typeChar('1')">1</button>
+        <button class="qk sym" onpointerdown="typeChar('2')">2</button>
+        <button class="qk sym" onpointerdown="typeChar('3')">3</button>
+        <button class="qk sym" onpointerdown="typeChar('4')">4</button>
+        <button class="qk sym" onpointerdown="typeChar('5')">5</button>
+        <button class="qk sym" onpointerdown="typeChar('6')">6</button>
+        <button class="qk sym" onpointerdown="typeChar('7')">7</button>
+        <button class="qk sym" onpointerdown="typeChar('8')">8</button>
+        <button class="qk sym" onpointerdown="typeChar('9')">9</button>
+        <button class="qk sym" onpointerdown="typeChar('0')">0</button>
+      </div>
+
+      <!-- QWERTY -->
+      <div class="kb-row">
+        <button class="qk" id="k-q" onpointerdown="typeChar('q')">q</button>
+        <button class="qk" id="k-w" onpointerdown="typeChar('w')">w</button>
+        <button class="qk" id="k-e" onpointerdown="typeChar('e')">e</button>
+        <button class="qk" id="k-r" onpointerdown="typeChar('r')">r</button>
+        <button class="qk" id="k-t" onpointerdown="typeChar('t')">t</button>
+        <button class="qk" id="k-y" onpointerdown="typeChar('y')">y</button>
+        <button class="qk" id="k-u" onpointerdown="typeChar('u')">u</button>
+        <button class="qk" id="k-i" onpointerdown="typeChar('i')">i</button>
+        <button class="qk" id="k-o" onpointerdown="typeChar('o')">o</button>
+        <button class="qk" id="k-p" onpointerdown="typeChar('p')">p</button>
+      </div>
+
+      <!-- ASDF -->
+      <div class="kb-row">
+        <button class="qk" id="k-a" onpointerdown="typeChar('a')">a</button>
+        <button class="qk" id="k-s" onpointerdown="typeChar('s')">s</button>
+        <button class="qk" id="k-d" onpointerdown="typeChar('d')">d</button>
+        <button class="qk" id="k-f" onpointerdown="typeChar('f')">f</button>
+        <button class="qk" id="k-g" onpointerdown="typeChar('g')">g</button>
+        <button class="qk" id="k-h" onpointerdown="typeChar('h')">h</button>
+        <button class="qk" id="k-j" onpointerdown="typeChar('j')">j</button>
+        <button class="qk" id="k-k" onpointerdown="typeChar('k')">k</button>
+        <button class="qk" id="k-l" onpointerdown="typeChar('l')">l</button>
+        <button class="qk wide" onpointerdown="pressKey('enter')">↵</button>
+      </div>
+
+      <!-- ZXCV -->
+      <div class="kb-row">
+        <button class="qk wide" id="shift-qw" onpointerdown="toggleShiftQw()">⇧</button>
+        <button class="qk" id="k-z" onpointerdown="typeChar('z')">z</button>
+        <button class="qk" id="k-x" onpointerdown="typeChar('x')">x</button>
+        <button class="qk" id="k-c" onpointerdown="typeChar('c')">c</button>
+        <button class="qk" id="k-v" onpointerdown="typeChar('v')">v</button>
+        <button class="qk" id="k-b" onpointerdown="typeChar('b')">b</button>
+        <button class="qk" id="k-n" onpointerdown="typeChar('n')">n</button>
+        <button class="qk" id="k-m" onpointerdown="typeChar('m')">m</button>
+        <button class="qk wide" onpointerdown="pressKey('backspace')">⌫</button>
+      </div>
+
+      <!-- Symbols + Space -->
+      <div class="kb-row">
+        <button class="qk sym" onpointerdown="typeChar('.')">.</button>
+        <button class="qk sym" onpointerdown="typeChar(',')">，</button>
+        <button class="qk sym" onpointerdown="typeChar('!')">!</button>
+        <button class="qk space" onpointerdown="typeChar(' ')">SPACE</button>
+        <button class="qk sym" onpointerdown="typeChar('?')">?</button>
+        <button class="qk sym" onpointerdown="typeChar('-')">-</button>
+      </div>
+
+      <!-- Arrows -->
+      <div class="arrow-pad">
+        <div class="arrow-row"><button class="ark" onpointerdown="pressKey('up')">↑</button></div>
+        <div class="arrow-row">
+          <button class="ark" onpointerdown="pressKey('left')">←</button>
+          <button class="ark" onpointerdown="pressKey('down')">↓</button>
+          <button class="ark" onpointerdown="pressKey('right')">→</button>
+        </div>
+      </div>
+
+    </div><!-- /qwerty -->
+  </div><!-- /kb-card -->
+  <div class="pad"></div>
+</div>
+
+<!-- ═══ Clipboard ═══ -->
+<div class="page" id="page-clipboard">
+  <div class="card" style="margin-top:4px;">
+    <div class="card-title">Send to PC Clipboard</div>
+    <textarea class="txt-area" id="clip-txt" placeholder="এখানে লেখো → PC তে Ctrl+V করলেই paste হবে" rows="5" oninput="updateCount()"></textarea>
+    <div class="char-count" id="clip-count">0 characters</div>
+    <div class="send-row">
+      <button class="send-btn" onclick="sendClipboard()">📋 Copy to PC</button>
+      <button class="clr-btn" onclick="clearClip()">Clear</button>
+    </div>
+  </div>
+  <div class="pad"></div>
+</div>
+
+<script>
+  const SERVER = window.location.origin;
+
+  // ── WebSocket ──
+  const socket = io(SERVER, {transports:['websocket','polling']});
+  const mods = {ctrl:false, shift:false, alt:false, win:false};
+  let shiftOn = false;
+
+  socket.on('connect', ()=>{
+    const chip=document.getElementById('ws-chip');
+    chip.classList.add('connected');
+    document.getElementById('ws-label').textContent='Connected';
+  });
+  socket.on('disconnect', ()=>{
+    const chip=document.getElementById('ws-chip');
+    chip.classList.remove('connected');
+    document.getElementById('ws-label').textContent='Disconnected';
+  });
+
+  // ── Tab switching ──
+  function goTab(name, el){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('page-'+name).classList.add('active');
+  }
+
+  // ── Ripple ──
+  function ripple(btn,e){
+    const r=document.createElement('span');r.className='rpl';
+    const sz=Math.max(btn.offsetWidth,btn.offsetHeight)*2;
+    r.style.cssText=`width:${sz}px;height:${sz}px;left:${e.offsetX-sz/2}px;top:${e.offsetY-sz/2}px`;
+    btn.appendChild(r);setTimeout(()=>r.remove(),600);
+  }
+
+  // ── HTTP commands ──
+  function cmd(e,c,ico,title,sub){
+    ripple(e.currentTarget,e);
+    fetch(`${SERVER}/command`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:c})})
+    .then(r=>r.json()).then(()=>toast(ico,title,sub)).catch(()=>toast(ico,title,sub));
+  }
+  function confirmSD(){
+    if(confirm('Shutdown this PC?')){
+      fetch(`${SERVER}/command`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:'SD'})})
+      .then(()=>toast('⏻','Shutting Down','5 seconds...'));
+    }
+  }
+
+  // ── Modifier keys ──
+  function toggleMod(mod){
+    mods[mod]=!mods[mod];
+    document.getElementById('mod-'+mod).classList.toggle('on', mods[mod]);
+  }
+
+  // ── Press key (real-time via WebSocket) ──
+  function pressKey(key){
+    const active = Object.keys(mods).filter(m=>mods[m]);
+    const keys = active.length > 0 ? [...active, key] : [key];
+    socket.emit('key', {keys});
+    // Show brief toast for combos only
+    if(active.length > 0){
+      toast('⌨️', keys.join('+').toUpperCase(), '');
+      active.forEach(m=>{mods[m]=false; document.getElementById('mod-'+m).classList.remove('on');});
+    }
+  }
+
+  // ── QWERTY type (real-time) ──
+  function typeChar(ch){
+    const c = shiftOn ? ch.toUpperCase() : ch;
+    socket.emit('type', {text: c});
+    if(shiftOn){
+      shiftOn=false;
+      document.getElementById('shift-qw').classList.remove('mod-on');
+      updateCase();
+    }
+  }
+
+  // ── Shift on QWERTY ──
+  function toggleShiftQw(){
+    shiftOn=!shiftOn;
+    document.getElementById('shift-qw').classList.toggle('mod-on', shiftOn);
+    updateCase();
+  }
+
+  const letters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+  function updateCase(){
+    letters.forEach(l=>{
+      const el=document.getElementById('k-'+l);
+      if(el) el.textContent = shiftOn ? l.toUpperCase() : l;
+    });
+  }
+
+  // ── QWERTY Toggle ──
+  function toggleQwerty(){
+    const qw=document.getElementById('qwerty');
+    const btn=document.getElementById('kb-toggle');
+    qw.classList.toggle('show');
+    if(qw.classList.contains('show')){
+      btn.classList.add('open');
+      btn.innerHTML='🔼 Hide QWERTY Keyboard';
+    } else {
+      btn.classList.remove('open');
+      btn.innerHTML='⌨️ Show QWERTY Keyboard';
+    }
+  }
+
+  // ── Clipboard ──
+  function sendClipboard(){
+    const text=document.getElementById('clip-txt').value.trim();
+    if(!text){toast('⚠️','Empty!','কিছু লেখো');return;}
+    fetch(`${SERVER}/clipboard`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})})
+    .then(r=>r.json()).then(()=>toast('📋','Copied!','PC তে Ctrl+V করো'));
+  }
+  function updateCount(){document.getElementById('clip-count').textContent=document.getElementById('clip-txt').value.length+' characters';}
+  function clearClip(){document.getElementById('clip-txt').value='';updateCount();}
+
+  // ── Toast ──
+  let tt;
+  function toast(ico,title,sub){
+    clearTimeout(tt);
+    document.getElementById('ti').textContent=ico||'✓';
+    document.getElementById('tt').textContent=title||'Done';
+    document.getElementById('ts').textContent=sub||'';
+    const bar=document.getElementById('tbar');
+    bar.classList.remove('go');void bar.offsetWidth;bar.classList.add('go');
+    document.getElementById('toast').classList.add('show');
+    tt=setTimeout(()=>document.getElementById('toast').classList.remove('show'),2500);
+  }
+
+  // ── Theme ──
+  function toggleTheme(){
+    const h=document.documentElement;
+    const dark=h.getAttribute('data-theme')==='dark';
+    h.setAttribute('data-theme',dark?'light':'dark');
+    document.getElementById('tbtn').textContent=dark?'🌙':'☀️';
+  }
+</script>
+</body>
+</html>
